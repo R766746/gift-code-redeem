@@ -1,0 +1,6 @@
+# Tell Nixpacks to install Python, Google Chrome, and required system libraries
+[providers]
+python = {}
+
+[phases.setup]
+nixPkgs = ["...", "python313", "google-chrome", "glib", "nss", "nspr", "atk", "at-spi2-atk", "cups", "dbus", "libdrm", "gdk-pixbuf", "gtk3", "pango", "cairo"]
