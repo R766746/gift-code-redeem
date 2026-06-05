@@ -1,11 +1,23 @@
 # KingShot Auto Gift Code Redeemer
 
-Automatically detects new gift codes from kingshot.net and redeems them
-for all your players on ks-giftcode.centurygame.com — fully hands-free.
+> **Automatically detects new gift codes from kingshot.net and redeems them
+> for all your players on ks-giftcode.centurygame.com — fully hands-free.**
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.8+](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/)
+[![Selenium](https://img.shields.io/badge/Selenium-4.20-green.svg)](https://selenium-python.readthedocs.io/)
 
 ---
 
-## How it works
+## ⚠️ Before You Use
+
+- This tool is for **personal use** only — to redeem codes for your own player IDs.
+- Do **not** abuse or spam the redemption site.
+- Gift codes expire; the tool skips codes it has already processed.
+
+---
+
+## How It Works
 
 ```
 Every 15 minutes:
@@ -20,15 +32,20 @@ Every 15 minutes:
 
 ---
 
-## Setup
+## Quick Start
 
-### 1. Install Python dependencies
+### 1. Clone the repo
+```bash
+git clone https://github.com/Gopi360/GiftCode-Redeem-Automation.git
+```
+
+### 2. Install Python dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Install Google Chrome
-The script uses Chrome in headless mode. Install it:
+### 3. Install Google Chrome
+
 - **Ubuntu/Debian:**
   ```bash
   wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
@@ -37,51 +54,70 @@ The script uses Chrome in headless mode. Install it:
   ```
 - **Windows/Mac:** Download from https://www.google.com/chrome/
 
-### 3. Add your players
-Edit `playerIDs.txt` — one player per line:
-```
-8767319   SgtSlayer
-1234567   WarriorKing
-```
-(The name is optional, just for logging)
+### 4. Add your players
 
-### 4. Run
+Create a file called `playerIDs.txt` — one player per line:
+```
+876734319   PlayerOne
+123456756   PlayerTwo
+```
+> ⚠️ **Do not share your `playerIDs.txt`** — it contains your private player IDs.
+> It is listed in `.gitignore` so it won't be accidentally committed.
+
+### 5. Run
 ```bash
 python main.py
 ```
 
 ---
 
-## Files
+## File Structure
 
 | File | Purpose |
 |------|---------|
 | `main.py` | Scheduler — polls API, detects new codes |
 | `redeemer.py` | Selenium logic — redeems on centurygame.com |
-| `playerIDs.txt` | Your player IDs (you edit this) |
-| `seen_codes.json` | Auto-created — tracks redeemed codes |
+| `playerIDs.txt` | **You create this** — your player IDs (gitignored) |
+| `seen_codes.json` | Auto-created — tracks redeemed codes (gitignored) |
 | `logs/` | Daily log files |
 | `screenshots/` | Auto-saved on errors for debugging |
 
 ---
 
-## Deployment (24/7 running)
+## Configuration
 
-### Option A — DigitalOcean Droplet (Recommended, ~$4/month)
+Edit the top of `main.py`:
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `CHECK_INTERVAL` | `15` | Minutes between API polls |
+
+Edit the top of `redeemer.py`:
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `POST_LOGIN_WAIT` | `3` | Seconds to wait after login loads |
+| `POST_CONFIRM_WAIT` | `3` | Seconds to wait after clicking Confirm |
+| `BETWEEN_PLAYERS` | `2` | Pause between each player |
+| `headless` | `True` | Set `False` to see the browser window live |
+
+---
+
+## Deployment (24/7 Running)
+
+### Option A — DigitalOcean Droplet (~$4/month, Recommended)
 1. Create a $4/mo Ubuntu 24.04 droplet at https://digitalocean.com
-2. SSH in, clone/upload your files
-3. Install Chrome + Python deps (see above)
-4. Run with `screen` or `nohup` so it survives logout:
+2. SSH in and clone this repo
+3. Install Chrome + Python deps (see Quick Start above)
+4. Keep it running after logout with `screen`:
    ```bash
-   # Using screen (easiest):
    screen -S kingshot
    python main.py
    # Press Ctrl+A then D to detach
-   # Reattach anytime: screen -r kingshot
+   # Reattach anytime with: screen -r kingshot
    ```
-5. Or set it up as a systemd service (see below) for auto-restart on reboot
 
-### Option B — systemd service (best for VPS, auto-restarts)
+### Option B — systemd Service (Best for VPS, auto-restarts on reboot)
 Create `/etc/systemd/system/kingshot.service`:
 ```ini
 [Unit]
@@ -90,58 +126,75 @@ After=network.target
 
 [Service]
 User=ubuntu
-WorkingDirectory=/home/ubuntu/kingshot_auto
-ExecStart=/usr/bin/python3 /home/ubuntu/kingshot_auto/main.py
+WorkingDirectory=/home/ubuntu/kingshot-auto-redeemer
+ExecStart=/usr/bin/python3 /home/ubuntu/kingshot-auto-redeemer/main.py
 Restart=always
 RestartSec=10
 
 [Install]
 WantedBy=multi-user.target
 ```
-Then:
+Then enable and start it:
 ```bash
 sudo systemctl enable kingshot
 sudo systemctl start kingshot
-sudo systemctl status kingshot   # check it's running
+sudo systemctl status kingshot
 ```
 
-### Option C — Railway.app (Free tier, easiest)
-1. Push your code to a GitHub repo
-2. Connect repo to https://railway.app
-3. Add a `Procfile`:
+### Option C — Railway.app (Free tier, easiest cloud option)
+1. Push this repo to your GitHub
+2. Connect it at https://railway.app
+3. Create a `Procfile` in the root:
    ```
    worker: python main.py
    ```
-4. Railway will run it 24/7 for free (within limits)
-> Note: Railway free tier has ~500 hrs/month — enough for this use case.
+4. Railway runs it 24/7 for free within their free tier limits (~500 hrs/month).
 
-### Option C — Your own PC (simplest but not reliable)
-Just run `python main.py` — but it stops when your PC is off.
-
----
-
-## Configuration
-
-Edit the top of `main.py` to change:
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `CHECK_INTERVAL` | 15 | Minutes between API polls |
-
-Edit the top of `redeemer.py` to change:
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `POST_LOGIN_WAIT` | 3 | Seconds to wait after login loads |
-| `POST_CONFIRM_WAIT` | 3 | Seconds to wait after clicking Confirm |
-| `BETWEEN_PLAYERS` | 2 | Pause between each player |
-| `headless` | True | Set False to see the browser window |
+### Option D — Your Own PC (Simplest, not reliable)
+```bash
+python main.py
+```
+> Stops when your PC shuts down or sleeps.
 
 ---
 
 ## Troubleshooting
 
-- **Error screenshots** are saved to `screenshots/` automatically
-- **Logs** are in `logs/run_YYYYMMDD.log`
-- If the site changes its HTML, the XPATHs in `redeemer.py` may need updating
-- Set `headless=False` in `redeemer.py` → `build_driver()` call to watch the browser live
+| Problem | Fix |
+|---------|-----|
+| Script crashes immediately | Make sure `playerIDs.txt` exists |
+| Code not being redeemed | Set `headless=False` in `redeemer.py` to watch the browser |
+| Element not found errors | The site may have updated its HTML — check XPATHs in `redeemer.py` |
+| Chrome not found | Reinstall Google Chrome and ensure it's in your PATH |
+
+- **Error screenshots** are saved automatically to `screenshots/`
+- **Logs** are written to `logs/run_YYYYMMDD.log`
+
+---
+
+## Contributing
+
+Pull requests are welcome! If the gift code site changes its layout and breaks the XPATHs, feel free to open an issue or submit a fix.
+
+1. Fork this repo
+2. Create a branch: `git checkout -b fix/xpath-update`
+3. Commit and push your changes
+4. Open a Pull Request
+
+---
+
+## License
+
+Copyright (c) 2025 **[Gopi / Gopi360]**
+
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
+
+You are free to use, copy, modify, and distribute this software, but you **must** keep the original copyright notice. You may **not** claim this as your own original work.
+
+---
+
+## Author
+
+Made by **[Supriya Gope (Gopi)]** — [github.com/Gopi360](https://github.com/Gopi360)
+
+If this helped you, consider giving the repo a ⭐ on GitHub!

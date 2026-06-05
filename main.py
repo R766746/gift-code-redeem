@@ -5,7 +5,7 @@ Polls kingshot.net/api/gift-codes every 15 minutes.
 When a NEW code is detected, automatically redeems it
 for every player in playerIDs.txt.
 
-Author: Built on top of SgtSlayer's original script
+Author: Built by Gopi
 """
 
 import time
@@ -57,6 +57,7 @@ def save_seen_codes(codes: set):
 def load_player_ids() -> list:
     """Read player IDs from playerIDs.txt (one ID per line, optional name after space)."""
     players = []
+    seen_pids = set()
     if not os.path.exists(PLAYER_IDS_FILE):
         log.error(f"'{PLAYER_IDS_FILE}' not found! Please create it.")
         return players
@@ -67,6 +68,10 @@ def load_player_ids() -> list:
                 continue
             parts = line.split(maxsplit=1)
             pid  = parts[0]
+            if pid in seen_pids:
+                log.warning(f"Duplicate player ID skipped: {pid}")
+                continue
+            seen_pids.add(pid)
             name = parts[1] if len(parts) > 1 else pid
             players.append((pid, name))
     return players

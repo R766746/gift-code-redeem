@@ -15,6 +15,7 @@ Flow per player:
 import time
 import os
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -33,18 +34,26 @@ BETWEEN_PLAYERS    = 2    # Pause between players
 def build_driver(headless: bool = True) -> webdriver.Chrome:
     """Build and return a Chrome WebDriver instance using Selenium Manager."""
     chrome_options = Options()
+    
     if headless:
-        chrome_options.add_argument("--headless")
+        # Modern, stable headless mode for newer Chrome versions
+        chrome_options.add_argument("--headless") 
+        
+    # Standard flags to prevent crashes in automated environments
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--window-size=1280,800")
+    
+    # Anti-bot detection & stability tweaks
     chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+    chrome_options.set_capability("goog:loggingPrefs", {"browser": "ALL"}) 
 
+    # Launch driver natively
     driver = webdriver.Chrome(options=chrome_options)
+    
+    # Hide webdriver fingerprint
     driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
     return driver
-
 
 def wait_for_element(wait, by, value, description="element"):
     """Wait for an element and return it, raising a clear error if not found."""
@@ -82,13 +91,13 @@ def get_result_message(driver, wait) -> str:
                     return text
         except Exception:
             continue
-    return "(no response message captured from website)"
+    return "(no result message captured)"
 
 
-def redeem_single(driver, wait, pid: str, username: str, code: str, log) -> tuple[bool, str]:
+def redeem_single(driver, wait, pid: str, username: str, code: str, log) -> bool:
     """
     Redeem one gift code for one player.
-    Returns a tuple of (is_success, exact_website_response).
+    Returns True on apparent success, False on failure.
     """
     log.info(f"  ▶ Player: {username} (ID: {pid})")
 
@@ -102,6 +111,7 @@ def redeem_single(driver, wait, pid: str, username: str, code: str, log) -> tupl
         )
         player_input.clear()
         player_input.send_keys(pid)
+        log.info(f"    Entered Player ID: {pid}")
 
         # ── Step 3: Click Login ────────────────────────────────────────────────
         login_btn = wait_for_clickable(
@@ -111,6 +121,7 @@ def redeem_single(driver, wait, pid: str, username: str, code: str, log) -> tupl
             "Login button"
         )
         login_btn.click()
+        log.info("    Clicked Login.")
 
         # ── Step 4: Wait for profile to load ───────────────────────────────────
         try:
@@ -118,17 +129,19 @@ def redeem_single(driver, wait, pid: str, username: str, code: str, log) -> tupl
                 (By.XPATH, '//*[contains(@class,"loading")]')
             ))
         except TimeoutException:
-            pass
+            pass  # Overlay may not exist — that's fine
 
         wait_for_element(
             wait, By.XPATH, '//input[@placeholder="Enter Gift Code"]', "Gift Code input"
         )
         time.sleep(POST_LOGIN_WAIT)
+        log.info("    Profile loaded.")
 
         # ── Step 5: Enter Gift Code ────────────────────────────────────────────
         code_input = driver.find_element(By.XPATH, '//input[@placeholder="Enter Gift Code"]')
         code_input.clear()
         code_input.send_keys(code)
+        log.info(f"    Entered code: {code}")
 
         # ── Step 6: Click Confirm ──────────────────────────────────────────────
         confirm_btn = wait_for_clickable(
@@ -138,25 +151,30 @@ def redeem_single(driver, wait, pid: str, username: str, code: str, log) -> tupl
             "Confirm button"
         )
         driver.execute_script("arguments[0].click();", confirm_btn)
+        log.info("    Clicked Confirm.")
 
         # ── Step 7: Capture result ─────────────────────────────────────────────
         result_text = get_result_message(driver, wait)
+        log.info(f"    Result: {result_text}")
 
         result_lower = result_text.lower()
         failed_keywords = ["expired", "invalid", "error", "fail", "already", "used", "wrong"]
         is_success = not any(kw in result_lower for kw in failed_keywords)
 
-        return is_success, result_text
+        return is_success
 
     except TimeoutException as e:
+        log.error(f"    [TIMEOUT] {e}")
         _save_screenshot(driver, pid, username, "timeout")
-        return False, f"Timeout Error: {str(e)}"
+        return False
     except NoSuchElementException as e:
+        log.error(f"    [ELEMENT NOT FOUND] {e}")
         _save_screenshot(driver, pid, username, "missing_element")
-        return False, f"Element Missing Error: {str(e)}"
+        return False
     except Exception as e:
+        log.error(f"    [UNEXPECTED ERROR] {e}")
         _save_screenshot(driver, pid, username, "error")
-        return False, f"Unexpected System Error: {str(e)}"
+        return False
 
 
 def _save_screenshot(driver, pid, username, reason):
@@ -172,7 +190,7 @@ def _save_screenshot(driver, pid, username, reason):
 def redeem_code_for_all_players(code: str, players: list, log):
     """
     Redeem `code` for every (pid, username) pair in `players`.
-    Uses a single browser session for all players.
+    Uses a single browser session for all players (faster, fewer Chrome starts).
     """
     driver = build_driver(headless=True)
     wait = WebDriverWait(driver, WAIT_TIMEOUT)
@@ -183,16 +201,13 @@ def redeem_code_for_all_players(code: str, players: list, log):
 
     try:
         for pid, username in players:
-            success, exact_msg = redeem_single(driver, wait, pid, username, code, log)
-            
-            # This directly prints what the website returned to your console output!
+            success = redeem_single(driver, wait, pid, username, code, log)
             if success:
-                log.info(f"    ✅ SUCCESS — {username} ({pid}) -> Website says: '{exact_msg}'")
+                log.info(f"    ✅ SUCCESS — {username} ({pid})")
                 success_count += 1
             else:
-                log.warning(f"    ❌ FAILED  — {username} ({pid}) -> Website says: '{exact_msg}'")
+                log.warning(f"    ❌ FAILED  — {username} ({pid})")
                 fail_count += 1
-                
             time.sleep(BETWEEN_PLAYERS)
     finally:
         driver.quit()
