@@ -2,16 +2,16 @@
 redeemer.py
 -----------
 Advanced impersonation-based gift code redeemer.
-Uses curl_cffi to match low-level browser TLS fingerprints,
-bypassing WAF/Cloudflare 403 blocks without needing a heavy graphical interface.
+Uses curl_cffi to match low-level browser TLS fingerprints.
 """
 
 import time
-from curl_cffi import requests
+# This line is crucial: it grabs the impersonation engine specifically for redeemer.py
+from curl_cffi import requests as impersonated_requests
 
 SITE_URL = "https://ks-giftcode.centurygame.com/"
 REDEEM_API_URL = "https://ks-giftcode.centurygame.com/api/redeem" 
-BETWEEN_PLAYERS = 1.2  # Strategic delay pacing
+BETWEEN_PLAYERS = 1.2
 
 
 def build_driver(headless: bool = True):
@@ -68,8 +68,8 @@ def redeem_code_for_all_players(code: str, players: list, log):
     fail_count = 0
     start_time = time.time()
 
-    # Initialize a session that perfectly clones a real Chrome browser engine
-    with requests.Session(impersonate="chrome") as session:
+    # Change requests.Session to impersonated_requests.Session here
+    with impersonated_requests.Session(impersonate="chrome") as session:
         # Pre-seed session headers matching normal web interaction
         session.headers.update({
             "Accept": "application/json, text/plain, */*",
@@ -78,7 +78,6 @@ def redeem_code_for_all_players(code: str, players: list, log):
             "Origin": "https://ks-giftcode.centurygame.com",
             "Referer": "https://ks-giftcode.centurygame.com/"
         })
-
         # Hit the home root first to gracefully fetch underlying verification elements
         try:
             session.get(SITE_URL, timeout=5)
