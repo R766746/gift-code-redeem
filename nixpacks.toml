@@ -1,4 +1,4 @@
 providers = ["python"]
 
 [phases.setup]
-nixPkgs = ["python313", "google-chrome", "glib", "nss", "nspr", "atk", "at-spi2-atk", "libdrm", "gtk3", "pango", "cairo"]
+nixPkgs = ["python313", "chromium"]
