@@ -41,8 +41,7 @@ def build_driver(headless: bool = True) -> webdriver.Chrome:
     chrome_options.add_argument("--window-size=1280,800")
     chrome_options.add_argument("--disable-blink-features=AutomationControlled")
 
-    # Point Selenium directly to the Chromium binary provided by Nixpacks
-    chrome_options.binary_location = "/usr/bin/chromium"
+    # Let Selenium find the Nixpacks Chromium binary automatically
 
     driver = webdriver.Chrome(options=chrome_options)
     driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
