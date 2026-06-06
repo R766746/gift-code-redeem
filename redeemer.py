@@ -34,12 +34,18 @@ def build_driver(headless: bool = True) -> webdriver.Chrome:
     """Build and return a Chrome WebDriver instance using Selenium Manager."""
     chrome_options = Options()
     if headless:
-        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--headless=new") # Explicitly call modern linux engine
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--window-size=1280,800")
     chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+
+    # Force binary path location backup check for Ubuntu/Debian environments
+    if os.path.exists("/usr/bin/google-chrome"):
+        chrome_options.binary_location = "/usr/bin/google-chrome"
+    elif os.path.exists("/usr/bin/chromium-browser"):
+        chrome_options.binary_location = "/usr/bin/chromium-browser"
 
     driver = webdriver.Chrome(options=chrome_options)
     driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
