@@ -31,7 +31,7 @@ BETWEEN_PLAYERS    = 2    # Pause between players
 
 
 def build_driver(headless: bool = True) -> webdriver.Chrome:
-    """Build and return a Chrome WebDriver instance using native Selenium core."""
+    """Build and return a Chromium WebDriver instance using native Selenium core."""
     chrome_options = Options()
     if headless:
         chrome_options.add_argument("--headless")
@@ -40,6 +40,9 @@ def build_driver(headless: bool = True) -> webdriver.Chrome:
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--window-size=1280,800")
     chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+
+    # Point Selenium directly to the Chromium binary provided by Nixpacks
+    chrome_options.binary_location = "/usr/bin/chromium"
 
     driver = webdriver.Chrome(options=chrome_options)
     driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
